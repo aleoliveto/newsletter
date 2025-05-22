@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KPI Newsletter Maker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #323b45;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+    .title {
+      text-align: center;
+      color: #ff6f00;
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    .input-row, .kpi-input-row {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .kpi-input-row input {
+      margin: 5px;
+      width: 70px;
+    }
+    .kpi-box {
+      background: white;
+      color: black;
+      border-radius: 40px;
+      padding: 20px 10px;
+      flex: 1 1 14%;
+      max-width: 135px;
+      min-width: 120px;
+      height: 7cm;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      align-items: center;
+      text-align: center;
+    }
+    .kpi-box img {
+      width: 90%;
+      height: auto;
+      margin: 4px 0;
+    }
+    .value {
+      color: #ff6f00;
+      font-size: 2.4em;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .target {
+      color: #ff6f00;
+      font-size: 1em;
+      margin-bottom: 8px;
+    }
+    .kpi-name {
+      font-size: 1em;
+      line-height: 1.3;
+      padding: 0 5px;
+    }
+    button {
+      margin: 20px auto;
+      display: block;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <div style="flex: 1; text-align: left;">
+      <label for="baseName" style="font-size: 24px; color: #ff6f00;">Base Name:</label>
+      <input type="text" id="baseName" placeholder="e.g. Southend" onchange="updateBaseName()" style="font-size: 20px; padding: 4px; width: 200px; margin-left: 10px;" />
+    </div>
+  </div>
+<div class="kpi-input-row">
+  <div>
+    <label>GLB (%): <input type="number" step="0.1" id="glb" value="78"></label>
+    <label>FWDC-8 (%): <input type="number" step="0.1" id="fwdc8" value="70"></label>
+    <label>Turn Time: <input type="number" step="0.1" id="turn" value="28"></label>
+    <label>Turn Time Target: <input type="number" step="0.1" id="turnTarget" value="25"></label>
+    <label>RDDCT-4 (%): <input type="number" step="0.1" id="rddct4" value="62"></label>
+    <label>D15 (%): <input type="number" step="0.1" id="d15" value="65"></label>
+    <label>CR0 (%): <input type="number" step="0.1" id="cr0" value="99.3"></label>
+  </div>
+</div>
+
+<button onclick="exportDashboard()">Generate Preview</button>
+<div id="preview" style="text-align: center; margin-top: 20px;"></div>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script>
+  function getGauge(actual, target, reverse = false) {
+    const good = reverse ? actual <= target : actual >= target;
+    const delta = Math.abs(actual - target);
+    const color = good ? "green" : delta < 0.05 ? "yellow" : "red";
+    return `./Images/${color}_gauge.png`;
+  }
+
+  function renderKPIsHTML() {
+    const values = {
+      "Green Light Boarding (GLB)": { actual: parseFloat(document.getElementById('glb').value) / 100, target: 0.83 },
+      "First Wave Door Closure -8 (FWDC-8)": { actual: parseFloat(document.getElementById('fwdc8').value) / 100, target: 0.73 },
+      "Average Turn Time (mins)": { actual: parseFloat(document.getElementById('turn').value), target: parseFloat(document.getElementById('turnTarget').value), reverse: true },
+      "Rest of Day Door Closure -4 (RDDCT-4)": { actual: parseFloat(document.getElementById('rddct4').value) / 100, target: 0.60 },
+      "On Time Performance (D15)": { actual: parseFloat(document.getElementById('d15').value) / 100, target: 0.68 },
+      "Completion Rate (CR0)": { actual: parseFloat(document.getElementById('cr0').value) / 100, target: 0.995 }
+    };
+
+    let html = "";
+
+    for (const [name, kpi] of Object.entries(values)) {
+      const imgSrc = getGauge(kpi.actual, kpi.target, kpi.reverse);
+      const actualDisplay = kpi.reverse ? `${kpi.actual}` : `${(kpi.actual * 100).toFixed(1)}%`;
+      const targetDisplay = kpi.reverse ? `${kpi.target}` : `${(kpi.target * 100).toFixed(1)}%`;
+
+      html += `
+        <div class="kpi-box">
+          <img src="${imgSrc}" alt="gauge" />
+          <div class="value">${actualDisplay}</div>
+          <div class="target">Target: ${targetDisplay}</div>
+          <div class="kpi-name">${name}</div>
+        </div>`;
+    }
+    return html;
+  }
+
+  function updateBaseName() {
+    const base = document.getElementById("baseName").value;
+    document.getElementById("baseTitle").textContent = base;
+  }
+
+  function exportDashboard() {
+    const base = document.getElementById("baseName").value.trim() || 'Output';
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    const kpiHTML = renderKPIsHTML();
+    const dashboardHTML = `
+      <div style='width: 850px; margin: 0 auto; background: #323b45; padding: 20px; font-family: Arial, sans-serif; color: white;'>
+        <style>
+          .kpi-container {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2cm;
+          }
+          .kpi-box {
+            background: white;
+            color: black;
+            border-radius: 40px;
+            padding: 20px 10px;
+            flex: 1 1 14%; max-width: 135px; min-width: 120px;
+            height: 7cm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+            text-align: center;
+          }
+          .kpi-box img {
+            width: 95%;
+            height: auto;
+            margin: 4px 0;
+          }
+          .value {
+            color: #ff6f00;
+            font-size: 1.9em;
+            font-weight: bold;
+            margin: 4px 0;
+          }
+          .target {
+            color: #ff6f00;
+            font-size: 0.9em;
+            margin-top: 0;
+            margin-bottom: 4px;
+          }
+          .kpi-name {
+            font-size: 0.95em;
+            line-height: 1.3;
+            padding: 0 5px;
+            min-height: 3em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          }
+        </style>
+        <div style='display: flex; justify-content: space-between; align-items: center;'>
+          <div style='font-size: 54px; color: #ff6f00;'>${base}</div>
+          <img src='Images/summer25.png' style='height: 54px;'>
+        </div>
+        <div style='text-align: center; margin: 10px 0;'>
+          <img src='Images/legend.png' style='height: 14px;'>
+        </div>
+        <div class='kpi-container' style='padding: 10px 0;'>
+          ${kpiHTML}
+        </div>
+      </div>`;
+
+    const tempDiv = document.createElement("div");
+tempDiv.style.display = "inline-block";
+tempDiv.style.background = "#323b45";
+tempDiv.style.margin = "0";
+tempDiv.style.padding = "0";
+tempDiv.style.border = "none";
+tempDiv.style.boxSizing = "content-box";
+tempDiv.innerHTML = dashboardHTML;
+    document.getElementById("preview").innerHTML = "<h3>📸 Screenshot Preview</h3>";
+    document.getElementById("preview").appendChild(tempDiv);
+
+    html2canvas(tempDiv, { useCORS: true, scale: 2 }).then(canvas => {
+      const preview = document.getElementById("preview");
+      preview.innerHTML = '<h3>📸 Screenshot Preview</h3>';
+      preview.appendChild(canvas);
+
+      const link = document.createElement("a");
+      link.download = `${base}_${dateStr}_dashboard.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      alert(`File exported. Look for '${base}_${dateStr}_dashboard.png' in your downloads folder.`);
+    });
+  }
+</script>
+</body>
+</html>
